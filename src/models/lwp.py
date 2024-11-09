@@ -24,16 +24,17 @@ class LearningWithPrototype:
     def predict(self, features: torch.tensor) -> torch.tensor:
         if self.prototypes is None:
             raise ValueError("Prototypes must be computed before predicting")
-        distance = distance_type.distance(self, features, self.prototypes)
+        distance = self.distance_type.distance(self, features, self.prototypes)
         return torch.argmin(distance, dim=1)
 
     def update(self, features: torch.tensor, labels: torch.tensor) -> None:
-        if self.features is None or self.labels is None:
+        if features is None or labels is None:
             raise ValueError("Features and labels must be provided")
         self.features = torch.cat((self.features, features)) if self.features is not None else features
         self.labels = torch.cat((self.labels, labels)) if self.labels is not None else labels
         self.distance_type.update(self)
         self.prototypes = self.compute_prototypes(self.features, self.labels)
+        
 
     def eval(self, test_features: torch.tensor, test_labels: torch.tensor) -> float:
         if self.prototypes is None:
