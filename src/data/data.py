@@ -15,9 +15,8 @@ def get_raw_data() -> Tuple[List[torch.tensor]]:
             data = t['data']
 
             if i == 1 and pth == train_paths[0]:
-                y_train.append(t['targets'])
+                y_train.append(torch.tensor(t['targets']))
             x_tensor = torch.tensor(data, dtype = torch.float32).permute(0,3,1,2)
-            
             x_train.append(x_tensor)
             
     for pth in test_paths:
@@ -27,7 +26,7 @@ def get_raw_data() -> Tuple[List[torch.tensor]]:
             data, targets = t['data'], t['targets']
 
             x_tensor = torch.tensor(data, dtype = torch.float32).permute(0,3,1,2)
-            y_tensor = targets
+            y_tensor = torch.tensor(targets)
 
             
             x_test.append(x_tensor)
