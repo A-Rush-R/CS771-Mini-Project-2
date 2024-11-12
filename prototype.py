@@ -73,6 +73,7 @@ class PrototypeBasedModelWithKMeans:
         prototypes_eval, weights_eval = self.apply_kmeans_and_calculate_weights(features_eval)
         
         print(f"Prototypes for evaluation data:\n{prototypes_eval[:5]}")
+        
         print(f"Sample weights for evaluation data:\n{weights_eval[:10]}")
 
 
