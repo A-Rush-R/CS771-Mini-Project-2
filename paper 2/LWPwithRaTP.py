@@ -6,11 +6,15 @@ from torchvision import models, transforms
 import numpy as np
 from RandMix import RandMix, AdaIN2d  # Import RandMix and AdaIN classes
 from PCA import PCLoss, PCALoss
+from torchvision.models import ResNet50_Weights
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class ResNetFeatureExtractor(nn.Module):
     def __init__(self, fea_dim):
         super(ResNetFeatureExtractor, self).__init__()
         # Load pretrained ResNet model and remove the fully connected layer
-        resnet = models.resnet50(pretrained=True)
+        resnet = models.resnet50(weights=ResNet50_Weights.DEFAULT)
         self.resnet_layers = nn.Sequential(*list(resnet.children())[:-1])  # Exclude the final FC layer
         self.fc = nn.Linear(resnet.fc.in_features, fea_dim)  # Adjust to output desired feature dimensions
 
@@ -25,7 +29,7 @@ class LWPWithRaTP(nn.Module):
         self.args = args
         self.task_id = 0
         fea_dim = args.proj_dim[args.dataset]
-
+        
         self.featurizer = ResNetFeatureExtractor(fea_dim)
         self.encoder = nn.Sequential(
             nn.Linear(fea_dim, fea_dim),
@@ -38,7 +42,7 @@ class LWPWithRaTP(nn.Module):
         nn.init.kaiming_uniform_(self.classifier, mode='fan_out', a=np.sqrt(5))
         
         # Initialize RandMix for data augmentation
-        self.data_aug = RandMix(noise_lv=1).cuda()
+        self.data_aug = RandMix(noise_lv=1).to(device)
         if args.dataset == 'dg5':
             self.aug_tran = transforms.Normalize([0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         else:
@@ -62,14 +66,24 @@ class LWPWithRaTP(nn.Module):
 
     def train_source(self, minibatches, task_id, epoch):
         self.task_id = task_id
-        all_x = minibatches[0].cuda().float()
-        all_y = minibatches[1].cuda().long()
+        all_x = torch.tensor(minibatches[0]).to(device).float()
+        all_y = torch.tensor(minibatches[1]).to(device).long()
 
         # Apply RandMix augmentation and concatenate original and augmented data
         ratio = epoch / self.args.max_epoch
         data_fore = self.aug_tran(torch.sigmoid(self.data_aug(all_x, ratio=ratio)))
-        all_x = torch.cat([all_x, data_fore])
-        all_y = torch.cat([all_y, all_y])
+        if data_fore.shape[1] != 3:
+            # Convert to 3 channels if necessary (e.g., using a channel reduction technique)
+            # For example, you can take the first 3 channels or convert it to grayscale:
+            data_fore = data_fore[:, :3, :, :]  # Keep only the first 3 channels
+
+        if all_x.shape[1:] != data_fore.shape[1:]:  # Ensure compatibility for concatenation
+            print(f"Shape mismatch: all_x has shape {all_x.shape}, data_fore has shape {data_fore.shape}")
+            # Adjust `data_fore` shape if necessary to match `all_x`
+            data_fore = data_fore.permute(0, 2, 3, 1) if data_fore.shape[1] != all_x.shape[1] else data_fore
+        
+        all_x = torch.cat([all_x, data_fore], dim=0)
+        all_y = torch.cat([all_y, all_y], dim=0)
 
         # Compute PCA loss and backpropagate
         loss, loss_dict = self.PCAupdate(all_x, all_y)
@@ -80,8 +94,8 @@ class LWPWithRaTP(nn.Module):
 
     def adapt(self, minibatches, task_id, epoch, replay_dataloader=None, old_model=None):
         self.task_id = task_id
-        all_x = minibatches[0].cuda().float()
-        all_y = minibatches[1].cuda().long()
+        all_x = torch.tensor(minibatches[0]).to(device).float()
+        all_y = torch.tensor(minibatches[1]).to(device).long()
 
         # Apply RandMix augmentation during adaptation
         all_x, all_y = self.select_aug(all_x, all_y, epoch)
@@ -122,7 +136,7 @@ class LWPWithRaTP(nn.Module):
 
     def distill_loss(self, pred, all_x, old_model):
         # Compute distillation loss with previous model outputs
-        old_model.cuda().eval()
+        old_model.to(device).eval()
         with torch.no_grad():
             old_logits = F.softmax(old_model(all_x), dim=1)
 
@@ -153,3 +167,6 @@ class LWPWithRaTP(nn.Module):
         all_x = torch.cat([all_x, data_fore])
         all_y = torch.cat([all_y, y_fore])
         return all_x, all_y
+    
+    
+    
