@@ -1,0 +1,8 @@
+import torch
+import os
+
+train_dir = os.path.join('dataset', 'part_one_dataset', 'train_data')
+eval_dir = os.path.join('dataset', 'part_one_dataset', 'eval_data')
+
+train_path = os.path.join(train_dir, '1_train_data.tar.pth')
+eval_path = os.path.join(eval_dir, '1_eval_data.tar.pth')

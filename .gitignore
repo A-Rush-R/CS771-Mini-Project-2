@@ -165,3 +165,5 @@ dataset
 .ruff_cache
 stuff
 embeds
+.gitignore
+.DS_Store
