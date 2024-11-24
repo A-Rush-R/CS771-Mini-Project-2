@@ -158,3 +158,5 @@ dataset.zip
 dataset
 .ruff_cache
 **embeds
+
+.DS_Store
