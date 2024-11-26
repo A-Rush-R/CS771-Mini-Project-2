@@ -23,3 +23,17 @@ This repository consists of the codebase for the Second Mini Project for the cou
 
 ## Contents
 
+
+## Instructions
+
+- Install requirements 
+```bash
+pip install requirements.txt
+```
+
+- Make sure `datasets\` directory is present
+
+- Run `vit_embeds.ipynb` to generate the embeddings
+
+- Run `basic_lwp_with_part_two.ipynb` to train and generate results
+
